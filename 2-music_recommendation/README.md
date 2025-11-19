@@ -42,7 +42,7 @@
         REQUIRE u.cpf IS UNIQUE;
 
 
-- Name único (Artista e Gênero
+- Name único (Artista e Gênero)
 
         // Artista
         CREATE CONSTRAINT artist_name_unique IF NOT EXISTS
@@ -82,5 +82,39 @@ Os id's devem ser substituidos pelo ID dos nós referentes.
         MATCH (m:Music {id: $musicId})
         MATCH (g:Genre {id: $genreId})
         MERGE (m)-[:HAS]->(g);
+
+## Carregando dados
+
+Os dados utilizados foi do [Spotify Global Music Dataset (2009–2025)](https://www.kaggle.com/datasets/wardabilal/spotify-global-music-dataset-20092025?resource=download).
+
+Foi necessário aplicar um filtro na coluna de track_name e artist_genre para remover títulos com aspas duplas.
+
+
+      LOAD CSV WITH HEADERS FROM 'file:///spotify_data_clean.csv' AS row
+      CALL {
+          WITH row
+      
+          // MUSIC
+          MERGE (m:Music { id: row.track_id })
+          SET m.title = row.track_name,
+              m.time = row.track_duration_min,
+              m.popularity = toInteger(row.track_popularity),
+              m.explicit = (row.explicit = "true")
+      
+          // ARTIST
+          MERGE (a:Artist { name: row.artist_name })
+          SET a.popularity = toInteger(row.artist_popularity)
+      
+          // GENRE
+          MERGE (g:Genre { name: row.artist_genres })
+      
+          // Artist - RELEASE - Music
+          MERGE (a)-[:RELEASE]->(m)
+      
+          // Music - HAS - Genre
+          MERGE (m)-[:HAS]->(g)
+      
+      }
+      IN TRANSACTIONS OF 1000 ROWS;
 
 
